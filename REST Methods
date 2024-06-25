@@ -1,0 +1,71 @@
+// app.js (continued)
+const Product = require('./models/Product');
+
+// Retrieve all records
+app.get('/products', async (req, res) => {
+  try {
+    const products = await Product.find();
+    res.json(products);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Retrieve one record by ID
+app.get('/products/:id', async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ message: 'Product not found' });
+    res.json(product);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Add new product
+app.post('/products', async (req, res) => {
+  const product = new Product(req.body);
+  try {
+    const newProduct = await product.save();
+    res.status(201).json(newProduct);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Update product specifications
+app.patch('/products/:id/specifications', async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ message: 'Product not found' });
+
+    product.specifications = req.body.specifications || product.specifications;
+    const updatedProduct = await product.save();
+    res.json(updatedProduct);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Search products with pagination and filtering by title
+app.get('/products/search', async (req, res) => {
+  const { title, page = 1, limit = 10 } = req.query;
+
+  try {
+    const query = title ? { title: new RegExp(title, 'i') } : {};
+    const products = await Product.find(query)
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .exec();
+    
+    const count = await Product.countDocuments(query);
+    
+    res.json({
+      products,
+      totalPages: Math.ceil(count / limit),
+      currentPage: page,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
